@@ -1,0 +1,23 @@
+#!/bin/sh
+
+[ -z "SPARK_MASTER_SERVICE_NAME" ] && \
+    echo "SPARK_MASTER_SERVICE_NAME not provided" && exit
+[ -z "MONGODB_SERVICE_NAME" ] && \
+    echo "MONGODB_SERVICE_NAME not provided" && exit
+[ -z "SHINY_SQUIRREL_SERVICE_NAME" ] && \
+    echo "SHINY_SQUIRREL_SERVICE_NAME not provided" && exit
+
+MASTER_SERVICE_NAME=${SPARK_MASTER_SERVICE_NAME//-/_}
+echo "$(eval echo \$${MASTER_SERVICE_NAME^^}_SERVICE_HOST) spark-master" \
+    >> /tmp/hosts
+
+# because the hostname only resolves locally
+export SPARK_LOCAL_HOSTNAME=$(hostname -i)
+
+MONGO_USER=$(cat /etc/mongo-secret/username)
+MONGO_PASS=$(cat /etc/mongo-secret/password)
+
+spark-submit ${HOME}/whirlwind_caravan \
+    --master spark://spark-master:7077 \
+    --mongo mongodb://${MONGO_USER}:${MONGO_PASS}@${MONGODB_SERVICE_NAME}/sparkhara \
+    --rest http://${SHINY_SQUIRREL_SERVICE_NAME}:9050/count-packets
