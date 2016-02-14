@@ -34,6 +34,7 @@ is not sufficient to run spark.
     (... lots of build exhaust ...)
 
     $ docker run --rm -i -t -p 1984:1984 \
+      -v /secrets/dir:/etc/mongo-secret \
       -e PATHFINDER_BROKER_URL=amqp://127.0.0.1/ \
       whirlwind-caravan-centos7
 
