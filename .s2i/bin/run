@@ -7,6 +7,8 @@
 [ -z "SHINY_SQUIRREL_SERVICE_NAME" ] && \
     echo "SHINY_SQUIRREL_SERVICE_NAME not provided" && exit
 
+source /common.sh
+
 MASTER_SERVICE_NAME=${SPARK_MASTER_SERVICE_NAME//-/_}
 echo "$(eval echo \$${MASTER_SERVICE_NAME^^}_SERVICE_HOST) spark-master" \
     >> /tmp/hosts
