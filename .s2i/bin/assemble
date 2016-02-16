@@ -4,5 +4,5 @@ set -e
 
 cp -rf /tmp/src/* ${HOME}
 
-pip install --user -r requirements.txt
-
+yum install -y python-pymongo
+yum install -y python-requests
