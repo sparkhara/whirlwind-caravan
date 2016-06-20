@@ -34,6 +34,8 @@ objects:
                 value: ${SPARK_MASTER}
               - name: WHIRLWIND_CARAVAN_SOCKET
                 value: ${DATA_SOCKET}
+              - name: SPARK_USER
+                value: ${SPARK_USER}
 
 parameters:
 - name: WHIRLWIND_CARAVAN_IMAGE
@@ -51,3 +53,6 @@ parameters:
 - name: DATA_SOCKET
   description: Location of the data socket to connect
   required: true
+- name: SPARK_USER
+  description: a spark user for the cluster
+  value: somesparkuser
