@@ -2,6 +2,8 @@
 
 set -ex
 
+source /common.sh
+
 if [ -z $WHIRLWIND_CARAVAN_MONGO_URL ]; then
     echo "WHIRLWIND_CARAVAN_MONGO_URL not provided"
     exit 1
