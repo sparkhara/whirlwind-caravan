@@ -39,7 +39,12 @@ def store_packets(id, count, normalized_rdd, mongo_url):
 
 
 def repack(line, count_packet_id):
-    (service, log) = json.loads(line).items()[0]
+    try:
+        (service, log) = json.loads(line).items()[0]
+    except Exception as e:
+        print('choked on something')
+        print(line)
+        raise e
 
     return  {'count-packet': count_packet_id,
              'service': service,
