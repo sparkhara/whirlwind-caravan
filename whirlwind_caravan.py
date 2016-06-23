@@ -16,7 +16,7 @@ from operator import add
 def signal_rest_server(id, count, service_counts, rest_url):
     data = {'id': id,
             'count': count,
-            'errors': True,
+            'errors': False,
             'service-counts': service_counts,
             }
     try:
