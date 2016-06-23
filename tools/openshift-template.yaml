@@ -14,6 +14,14 @@ objects:
       type: Rolling
     triggers:
       - type: ConfigChange
+      - type: ImageChange
+        imageChangeParams:
+          automatic: true
+          containerNames:
+            - whirlwind-caravan
+          from:
+            kind: ImageStreamTag
+            name: ${WHIRLWIND_CARAVAN_IMAGE}:latest
     replicas: 1
     selector:
       name: whirlwind-caravan
