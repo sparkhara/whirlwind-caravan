@@ -21,7 +21,7 @@ objects:
             - whirlwind-caravan
           from:
             kind: ImageStreamTag
-            name: ${WHIRLWIND_CARAVAN_IMAGE}:latest
+            name: whirlwind-caravan:latest
     replicas: 1
     selector:
       name: whirlwind-caravan
