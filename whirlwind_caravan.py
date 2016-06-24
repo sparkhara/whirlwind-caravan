@@ -13,10 +13,9 @@ import requests
 from operator import add
 
 
-def signal_rest_server(id, count, errors, service_counts, rest_url):
+def signal_rest_server(id, count, service_counts, rest_url):
     data = {'id': id,
             'count': count,
-            'errors': errors,
             'service-counts': service_counts,
             }
     try:
@@ -63,13 +62,10 @@ def process_generic(rdd, mongo_url, rest_url):
 
     normalized_rdd = rdd.map(lambda e: repack(e, count_packet_id)).cache()
 
-    errors = rdd.map(lambda e: True if 'Authorization failed' in e else False).reduce(lambda a, b: a or b)
-
     store_packets(count_packet_id, count, normalized_rdd, mongo_url)
 
     signal_rest_server(count_packet_id,
                        count,
-                       errors,
                        dict(normalized_rdd.map(
                            lambda e: (e['service'], 1)).reduceByKey(add).collect()),
                        rest_url)
