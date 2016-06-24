@@ -16,29 +16,9 @@ sparkhara/shiny-squirrel.
 installation and execution
 --------------------------
 
-this application is intended to be built as an openshift
-source-to-image image. for more information on source-to-image, please
-see https://github.com/openshift/source-to-image
-
-to build and run this application with s2i and docker, use the
-following commands (or something similar to your settings):
-
-**note** the openshift/python-27-centos7 image in the following example
-is not sufficient to run spark.
-
-::
-
-    $ s2i build https://github.com/sparkhara/whirlwind-caravan \
-      openshift/python-27-centos7 whirlwind-caravan-centos7
-
-    (... lots of build exhaust ...)
-
-    $ docker run --rm -i -t -p 1984:1984 \
-      -v /secrets/dir:/etc/mongo-secret \
-      -e PATHFINDER_BROKER_URL=amqp://127.0.0.1/ \
-      whirlwind-caravan-centos7
-
-    (log output from whirlwind-caravan)
+this application can be built using the docker file in the root. to
+deploy it, the openshift templates in the tools directory provide
+some clues as to how it should started.
 
 message formats
 ---------------
