@@ -40,15 +40,17 @@ def store_packets(id, count, normalized_rdd, mongo_url):
 
 def repack(line, count_packet_id):
     try:
-        (service, log) = json.loads(line).items()[0]
+        raw_entry = json.loads(line)
+        log_entry = json.loads(raw_entry.values()[0])
     except Exception as e:
         print('choked on something')
         print(line)
         raise e
 
     return  {'count-packet': count_packet_id,
-             'service': service,
-             'log': log}
+             'service': log_entry.get('hn', 'whirlwind-caravan'),
+             'log': log_entry.get('msg'),
+             'original': log_entry}
 
 
 def process_generic(rdd, mongo_url, rest_url):
