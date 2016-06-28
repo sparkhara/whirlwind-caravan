@@ -2,7 +2,9 @@
 
 set -ex
 
-source /common.sh
+if [ -z $SKIP_COMMON ]; then
+    source /common.sh
+fi
 
 if [ -z $WHIRLWIND_CARAVAN_MONGO_URL ]; then
     echo "WHIRLWIND_CARAVAN_MONGO_URL not provided"
