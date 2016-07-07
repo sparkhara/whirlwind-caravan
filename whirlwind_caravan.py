@@ -13,9 +13,10 @@ import requests
 from operator import add
 
 
-def signal_rest_server(id, count, service_counts, rest_url):
+def signal_rest_server(id, count, min_quality, service_counts, rest_url):
     data = {'id': id,
             'count': count,
+            'quality': min_quality,
             'service-counts': service_counts,
             }
     try:
@@ -50,6 +51,7 @@ def repack(line, count_packet_id):
     return  {'count-packet': count_packet_id,
              'service': log_entry.get('hn', 'whirlwind-caravan'),
              'log': log_entry.get('msg'),
+             'quality': log_entry.get('q'),
              'original': log_entry}
 
 
@@ -64,10 +66,13 @@ def process_generic(rdd, mongo_url, rest_url):
 
     normalized_rdd = rdd.map(lambda e: repack(e, count_packet_id)).cache()
 
+    min_quality = normalized_rdd.map(lambda d: float(d['quality'])).reduce(lambda x, y: x < y and x or y)
+
     store_packets(count_packet_id, count, normalized_rdd, mongo_url)
 
     signal_rest_server(count_packet_id,
                        count,
+                       min_quality,
                        dict(normalized_rdd.map(
                            lambda e: (e['service'], 1)).reduceByKey(add).collect()),
                        rest_url)
