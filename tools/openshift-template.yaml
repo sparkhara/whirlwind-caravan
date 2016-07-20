@@ -5,6 +5,21 @@ metadata:
   name: whirlwind-caravan
 objects:
 
+- kind: Service
+  apiVersion: v1
+  metadata:
+    name: whirlwind-caravan
+    labels:
+      name: whirlwind-caravan
+  spec:
+    ports:
+      - name: spark-port
+        protocol: TCP
+        port: 4040
+        targetPort: 4040
+    selector:
+      name: whirlwind-caravan
+
 - kind: DeploymentConfig
   apiVersion: v1
   metadata:
