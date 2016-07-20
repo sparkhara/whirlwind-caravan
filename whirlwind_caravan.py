@@ -51,7 +51,7 @@ def repack(line, count_packet_id):
     return  {'count-packet': count_packet_id,
              'service': log_entry.get('hn', 'whirlwind-caravan'),
              'log': log_entry.get('msg'),
-             'quality': log_entry.get('q'),
+             'quality': log_entry.get('q', 1.0),
              'original': log_entry}
 
 
