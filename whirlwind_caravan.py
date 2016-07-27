@@ -14,6 +14,7 @@ from som import fromJSON
 
 from operator import add
 
+
 def signal_rest_server(id, count, min_quality, service_counts, rest_url):
     data = {'id': id,
             'count': count,
@@ -32,7 +33,8 @@ def store_packets(id, count, normalized_rdd, mongo_url):
     # 1. code to insert log-ids document
     log_packets = normalized_rdd.collect()
     data = {'_id': id,
-            'processed-at': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3],
+            'processed-at':
+            datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3],
             'count': count,
             }
     db = pymongo.MongoClient(mongo_url).sparkhara
@@ -49,25 +51,32 @@ def repack(line, count_packet_id):
         print(line)
         raise e
 
-    return  {'count-packet': count_packet_id,
-             'service': log_entry.get('hn', 'whirlwind-caravan'),
-             'log': log_entry.get('msg'),
-             'quality': log_entry.get('q', 1.0),
-             'original': log_entry}
+    return {'count-packet': count_packet_id,
+            'service': log_entry.get('hn', 'whirlwind-caravan'),
+            'log': log_entry.get('msg'),
+            'quality': log_entry.get('q', 1.0),
+            'original': log_entry}
 
 
-def process_generic(rdd, mongo_url, rest_url, som):
+def process_generic(rdd, mongo_url, rest_url, somb):
     count = rdd.count()
     if count is 0:
         return
-    
+
     print "processing", count, "entries"
 
     count_packet_id = uuid.uuid4().hex
 
     normalized_rdd = rdd.map(lambda e: repack(e, count_packet_id)).cache()
 
-    min_quality = normalized_rdd.map(lambda o: som.value.sparseBooleanBestSimilarity(o['original']['fv']['len'], o['original']['fv']['idx'])).reduce(lambda x, y: x < y and x or y)
+    def sbsim(som):
+        def helper(obj):
+            fdim = obj['original']['fv']['len']
+            indices = obj['original']['fv']['idx']
+            return som.sparseBooleanBestSimilarity(fdim, indices)
+        return helper
+
+    min_quality = normalized_rdd.map(sbsim(somb.value)).reduce(min)
 
     store_packets(count_packet_id, count, normalized_rdd, mongo_url)
 
@@ -75,8 +84,10 @@ def process_generic(rdd, mongo_url, rest_url, som):
                        count,
                        min_quality,
                        dict(normalized_rdd.map(
-                           lambda e: (e['service'], 1)).reduceByKey(add).collect()),
+                           lambda e:
+                           (e['service'], 1)).reduceByKey(add).collect()),
                        rest_url)
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -116,9 +127,10 @@ def main():
 
     log4j = sc._jvm.org.apache.log4j
     log4j.LogManager.getRootLogger().setLevel(log4j.Level.WARN)
-    
+
     lines = ssc.socketTextStream(args.socket, args.port)
-    lines.foreachRDD(lambda rdd: process_generic(rdd, mongo_url, rest_url, som))
+    lines.foreachRDD(lambda rdd: process_generic(rdd, mongo_url,
+                                                 rest_url, som))
 
     ssc.start()
     ssc.awaitTermination()
