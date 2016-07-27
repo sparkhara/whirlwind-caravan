@@ -10,14 +10,16 @@ from pyspark import SparkContext
 from pyspark.streaming import StreamingContext
 import requests
 
+from som import fromJSON
+
 from operator import add
 
 
 def signal_rest_server(id, count, min_quality, service_counts, rest_url):
     data = {'id': id,
             'count': count,
-            'quality': min_quality,
             'service-counts': service_counts,
+            'quality': min_quality
             }
     try:
         requests.post(rest_url, json=data)
@@ -31,7 +33,8 @@ def store_packets(id, count, normalized_rdd, mongo_url):
     # 1. code to insert log-ids document
     log_packets = normalized_rdd.collect()
     data = {'_id': id,
-            'processed-at': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3],
+            'processed-at':
+            datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3],
             'count': count,
             }
     db = pymongo.MongoClient(mongo_url).sparkhara
@@ -48,14 +51,14 @@ def repack(line, count_packet_id):
         print(line)
         raise e
 
-    return  {'count-packet': count_packet_id,
-             'service': log_entry.get('hn', 'whirlwind-caravan'),
-             'log': log_entry.get('msg'),
-             'quality': log_entry.get('q', 1.0),
-             'original': log_entry}
+    return {'count-packet': count_packet_id,
+            'service': log_entry.get('hn', 'whirlwind-caravan'),
+            'log': log_entry.get('msg'),
+            'quality': log_entry.get('q', 1.0),
+            'original': log_entry}
 
 
-def process_generic(rdd, mongo_url, rest_url):
+def process_generic(rdd, mongo_url, rest_url, somb):
     count = rdd.count()
     if count is 0:
         return
@@ -66,7 +69,14 @@ def process_generic(rdd, mongo_url, rest_url):
 
     normalized_rdd = rdd.map(lambda e: repack(e, count_packet_id)).cache()
 
-    min_quality = normalized_rdd.map(lambda d: float(d['quality'])).reduce(lambda x, y: x < y and x or y)
+    def sbsim(som):
+        def helper(obj):
+            fdim = obj['original']['fv']['len']
+            indices = obj['original']['fv']['idx']
+            return som.sparseBooleanBestSimilarity(fdim, indices)
+        return helper
+
+    min_quality = normalized_rdd.map(sbsim(somb.value)).reduce(min)
 
     store_packets(count_packet_id, count, normalized_rdd, mongo_url)
 
@@ -74,8 +84,10 @@ def process_generic(rdd, mongo_url, rest_url):
                        count,
                        min_quality,
                        dict(normalized_rdd.map(
-                           lambda e: (e['service'], 1)).reduceByKey(add).collect()),
+                           lambda e:
+                           (e['service'], 1)).reduceByKey(add).collect()),
                        rest_url)
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -97,22 +109,31 @@ def main():
                         help='the socket ip address to attach for streaming '
                         'text data (default: caravan-pathfinder)',
                         default='caravan-pathfinder')
+    parser.add_argument('--model',
+                        help='the serialized model to use',
+                        default='model.json')
     args = parser.parse_args()
     mongo_url = args.mongo
     rest_url = args.rest
+    model = args.model
 
     sconf = SparkConf().setAppName(args.appname)
     if args.master:
         sconf.setMaster(args.master)
     sc = SparkContext(conf=sconf)
     ssc = StreamingContext(sc, 1)
+    somv = fromJSON(model)
+    som = sc.broadcast(somv)
+
+    log4j = sc._jvm.org.apache.log4j
+    log4j.LogManager.getRootLogger().setLevel(log4j.Level.WARN)
 
     lines = ssc.socketTextStream(args.socket, args.port)
-    lines.foreachRDD(lambda rdd: process_generic(rdd, mongo_url, rest_url))
+    lines.foreachRDD(lambda rdd: process_generic(rdd, mongo_url,
+                                                 rest_url, som))
 
     ssc.start()
     ssc.awaitTermination()
-
 
 if __name__ == '__main__':
     main()
