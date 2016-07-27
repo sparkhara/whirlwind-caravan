@@ -1,5 +1,7 @@
 #!/bin/sh
 
+cd $(dirname $0)
+
 set -ex
 
 if [ -z $SKIP_COMMON ]; then
@@ -24,7 +26,13 @@ if [ -n "$WHIRLWIND_CARAVAN_SOCKET" ]; then
     SOCKET_OPTION="--socket ${WHIRLWIND_CARAVAN_SOCKET}"
 fi
 
+if [ -n "$WHIRLWIND_CARAVAN_MODEL" ]; then
+    MODEL_OPTION="--model ${WHIRLWIND_CARAVAN_MODEL}"
+else
+    MODEL_OPTION="--model /opt/whirlwind/model.json"
+fi
+
 /opt/spark/bin/spark-submit /opt/whirlwind/whirlwind_caravan.py \
     --mongo $WHIRLWIND_CARAVAN_MONGO_URL \
     --rest $WHIRLWIND_CARAVAN_REST_URL \
-    $SPARK_MASTER_OPTION $SOCKET_OPTION
+    $SPARK_MASTER_OPTION $SOCKET_OPTION $MODEL_OPTION

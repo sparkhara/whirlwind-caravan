@@ -10,14 +10,15 @@ from pyspark import SparkContext
 from pyspark.streaming import StreamingContext
 import requests
 
-from operator import add
+from som import fromJSON
 
+from operator import add
 
 def signal_rest_server(id, count, min_quality, service_counts, rest_url):
     data = {'id': id,
             'count': count,
-            'quality': min_quality,
             'service-counts': service_counts,
+            'quality': min_quality
             }
     try:
         requests.post(rest_url, json=data)
@@ -55,18 +56,18 @@ def repack(line, count_packet_id):
              'original': log_entry}
 
 
-def process_generic(rdd, mongo_url, rest_url):
+def process_generic(rdd, mongo_url, rest_url, som):
     count = rdd.count()
     if count is 0:
         return
-
+    
     print "processing", count, "entries"
 
     count_packet_id = uuid.uuid4().hex
 
     normalized_rdd = rdd.map(lambda e: repack(e, count_packet_id)).cache()
 
-    min_quality = normalized_rdd.map(lambda d: float(d['quality'])).reduce(lambda x, y: x < y and x or y)
+    min_quality = normalized_rdd.map(lambda o: som.value.sparseBooleanBestSimilarity(o['original']['fv']['len'], o['original']['fv']['idx'])).reduce(lambda x, y: x < y and x or y)
 
     store_packets(count_packet_id, count, normalized_rdd, mongo_url)
 
@@ -97,22 +98,30 @@ def main():
                         help='the socket ip address to attach for streaming '
                         'text data (default: caravan-pathfinder)',
                         default='caravan-pathfinder')
+    parser.add_argument('--model',
+                        help='the serialized model to use',
+                        default='model.json')
     args = parser.parse_args()
     mongo_url = args.mongo
     rest_url = args.rest
+    model = args.model
 
     sconf = SparkConf().setAppName(args.appname)
     if args.master:
         sconf.setMaster(args.master)
     sc = SparkContext(conf=sconf)
     ssc = StreamingContext(sc, 1)
+    somv = fromJSON(model)
+    som = sc.broadcast(somv)
 
+    log4j = sc._jvm.org.apache.log4j
+    log4j.LogManager.getRootLogger().setLevel(log4j.Level.WARN)
+    
     lines = ssc.socketTextStream(args.socket, args.port)
-    lines.foreachRDD(lambda rdd: process_generic(rdd, mongo_url, rest_url))
+    lines.foreachRDD(lambda rdd: process_generic(rdd, mongo_url, rest_url, som))
 
     ssc.start()
     ssc.awaitTermination()
-
 
 if __name__ == '__main__':
     main()
